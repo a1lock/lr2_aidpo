@@ -42,3 +42,35 @@ def create_grade(
 def read_grades(student_id: int, db: Session = Depends(database.get_db)):
     # задание 2 CRUD чтение данных
     return db.query(models.Grade).filter(models.Grade.student_id == student_id).all()
+
+@app.patch("/grades/{grade_id}", response_model=schemas.GradeResponse)
+def update_grade(
+    grade_id: int, 
+    grade_update: schemas.GradeUpdate, 
+    db: Session = Depends(database.get_db),
+    current_user: dict = Depends(auth.get_current_user)
+):
+    # только преподаватель может менять оценки
+    if current_user["role"] != "Teacher":
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    # поиск существующей записи
+    db_grade = db.query(models.Grade).filter(models.Grade.id == grade_id).first()
+    if not db_grade:
+        raise HTTPException(status_code=404, detail="Grade not found")
+    
+    # обновление полей, если они переданы в запросе
+    update_data = grade_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_grade, key, value)
+    
+    # сохранение изменений
+    db.commit()
+    db.refresh(db_grade)
+    
+    # логирование обновления
+    log_entry = models.AuditLog(user_id=1, action=f"Updated grade ID {grade_id}")
+    db.add(log_entry)
+    db.commit()
+    
+    return db_grade

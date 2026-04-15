@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
+from typing import Optional
 
 # схема для входа в систему (используется в эндпоинте /token)
 class UserLogin(BaseModel):
@@ -27,3 +28,7 @@ class GradeResponse(GradeBase):
     class Config:
         # нужно чтобы Pydantic умел работать с моделями SQLAlchemy
         from_attributes = True
+
+class GradeUpdate(BaseModel):
+    value: Optional[int] = None
+    is_absent: Optional[bool] = None
