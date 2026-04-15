@@ -74,3 +74,29 @@ def update_grade(
     db.commit()
     
     return db_grade
+
+@app.delete("/grades/{grade_id}")
+def delete_grade(
+    grade_id: int, 
+    db: Session = Depends(database.get_db),
+    current_user: dict = Depends(auth.get_current_user)
+):
+    # проверка прав доступа: только преподаватель или админ может удалять оценки
+    if current_user["role"] not in ["Teacher", "Admin"]:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    # поиск записи
+    db_grade = db.query(models.Grade).filter(models.Grade.id == grade_id).first()
+    if not db_grade:
+        raise HTTPException(status_code=404, detail="Grade not found")
+    
+    # удаление записи
+    db.delete(db_grade)
+    db.commit()
+    
+    # логирование удаления
+    log_entry = models.AuditLog(user_id=1, action=f"Deleted grade ID {grade_id}")
+    db.add(log_entry)
+    db.commit()
+    
+    return {"detail": "Grade deleted successfully"}
